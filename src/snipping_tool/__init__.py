@@ -75,10 +75,10 @@ class SnippingWidget(QWidget):
         ])
 
         image = Image.open(os.path.join(BUILD_DIR, SCREENSHOT)).convert('L')
-        # image = transform(image).unsqueeze(0).to(device)
+        image = transform(image).unsqueeze(0).to(device)
 
-        # with torch.no_grad():
-        #     output = model(image)
+        with torch.no_grad():
+            output = model(image)
 
-        # result = train_dataset.decode_formula(output[0])
-        # print("Recognized formula:", result)
+        result = train_dataset.decode_formula(output[0])
+        print("Recognized formula:", result)

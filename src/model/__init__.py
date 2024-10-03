@@ -22,7 +22,7 @@ class IM2LatexModel(nn.Module):
         # LSTM for sequence generation
         self.lstm = nn.LSTM(embed_size, hidden_size,
                             num_layers, batch_first=True)
-
+        self.end_symbol = vocab_size - 1
         # Embedding layer
         self.embed = nn.Embedding(vocab_size, embed_size)
 
