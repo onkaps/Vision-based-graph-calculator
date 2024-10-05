@@ -3,7 +3,7 @@ import torch.nn as nn
 
 
 class IM2LatexModel(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size, num_layers):
+    def __init__(self, vocab_size, embed_size, hidden_size, num_layers, eos_index=0):
         super(IM2LatexModel, self).__init__()
 
         # CNN for feature extraction
@@ -22,7 +22,7 @@ class IM2LatexModel(nn.Module):
         # LSTM for sequence generation
         self.lstm = nn.LSTM(embed_size, hidden_size,
                             num_layers, batch_first=True)
-        self.end_symbol = vocab_size - 1
+        self.end_symbol = eos_index
         # Embedding layer
         self.embed = nn.Embedding(vocab_size, embed_size)
 
@@ -57,7 +57,7 @@ class IM2LatexModel(nn.Module):
                 symbol_prob = self.fc(lstm_out)
                 current_symbol = symbol_prob.argmax(2)
                 output.append(current_symbol)
-                if current_symbol.item() == self.end_symbol:
+                if (current_symbol == self.end_symbol).any():
                     break
             output = torch.cat(output, dim=1)
 
