@@ -1,19 +1,18 @@
 import torch
 import os
-from ..utils import STATE_DICT, MODEL_INFO, BUILD_DIR
+from ..utils import STATE_DICT, MODEL_INFO, BUILD_DIR, BATCH_SIZE
 import torch.nn as nn
 from torch.optim.adam import Adam
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from ..dataset import IM2LatexDataset
 from . import IM2LatexModel
-import torch.nn.functional as F
 from tqdm import tqdm
+from torch.nn.utils.rnn import pad_sequence
 
 
 def train_model():
     # Hyperparameters
-    BATCH_SIZE = 32
     EPOCHS = 10
     LEARNING_RATE = 0.001
     EMBED_SIZE = 256
@@ -22,7 +21,8 @@ def train_model():
 
 # Prepare dataset
     transform = transforms.Compose([
-        transforms.Resize((224, 224)),
+        transforms.Resize((256, 256)),
+        transforms.Grayscale(num_output_channels=1),
         transforms.ToTensor(),
     ])
 
@@ -34,19 +34,13 @@ def train_model():
 # Collate function for padding
 
     def collate_fn(batch):
-        images, encoded_formulas = zip(*batch)
-
-        # Pad sequences to the same length
-        lengths = [len(seq) for seq in encoded_formulas]
-        max_length = max(lengths)
-        padded_formulas = [F.pad(seq, (0, max_length - len(seq)), value=0)
-                           for seq in encoded_formulas]
-
-        # Stack images and padded formulas
-        images = torch.stack(images)
-        padded_formulas = torch.stack(padded_formulas)
-
-        return images, padded_formulas
+        images = torch.stack([item['image'] for item in batch])
+        
+        # Get formula tokens and pad them
+        formula_tokens = [item['formula_tokens'].squeeze(0) for item in batch]  # Remove extra batch dimension
+        formula_tokens_padded = pad_sequence(formula_tokens, batch_first=True, padding_value=train_dataset.tokenizer.pad_token_id)
+        
+        return images, formula_tokens_padded
 
     train_loader = DataLoader(
         train_dataset,
@@ -57,10 +51,11 @@ def train_model():
 
     # Initialize model
     model = IM2LatexModel(
-        len(train_dataset.vocab),
+        len(train_dataset.tokenizer),
         EMBED_SIZE,
         HIDDEN_SIZE,
-        NUM_LAYERS
+        NUM_LAYERS,
+        eos_index = train_dataset.tokenizer.eos_token_id
     )
 
     criterion = nn.CrossEntropyLoss()
@@ -81,7 +76,7 @@ def train_model():
             optimizer.zero_grad()
             outputs = model(images, formulas)
             loss = criterion(
-                outputs.view(-1, len(train_dataset.vocab)), formulas.view(-1))
+                outputs.view(-1, len(train_dataset.tokenizer)), formulas.view(-1))
             loss.backward()
             optimizer.step()
 
@@ -96,12 +91,12 @@ def train_model():
     print('Average Loss: {0:.6f}'.format(average_loss / EPOCHS))
 
     model_info = {
-        'vocab_size': len(train_dataset.vocab),
         'embed_size': EMBED_SIZE,
         'hidden_size': HIDDEN_SIZE,
         'num_layers': NUM_LAYERS
     }
 
-# Save the model
+    # Save the model
     torch.save(model.state_dict(), os.path.join(BUILD_DIR, STATE_DICT))
     torch.save(model_info, os.path.join(BUILD_DIR, MODEL_INFO))
+    train_dataset.tokenizer.save_pretrained(os.path.join(BUILD_DIR, 'tokenizer'))

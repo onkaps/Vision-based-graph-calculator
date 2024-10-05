@@ -2,7 +2,9 @@ import sys
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton
 from .snipping_tool import SnippingWidget
 from .model.train import train_model
-
+from .model.test import test_model
+from .utils import BUILD_DIR
+import os
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -32,4 +34,12 @@ if __name__ == '__main__':
         sys.exit(app.exec_())
 
     elif args[0] == 'train':
+        if not os.path.exists(BUILD_DIR):
+            print('Build directory does not exist. Creating one...')
+            os.mkdir(BUILD_DIR)
         train_model()
+
+    elif args[0] == 'test':
+        if not os.path.exists(BUILD_DIR):
+            raise Exception('Build directory does not exist. Please run \'make train\' first')
+        test_model()

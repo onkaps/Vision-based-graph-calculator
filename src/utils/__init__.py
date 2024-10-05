@@ -9,3 +9,4 @@ SRC_DIR = os.path.join(PROJECT_ROOT, 'src')
 STATE_DICT = 'im2latex_model.pth'
 MODEL_INFO = 'im2latex_model_info.pth'
 SCREENSHOT = 'screenshot.png'
+BATCH_SIZE = 8

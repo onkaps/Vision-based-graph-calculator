@@ -11,7 +11,6 @@ from PyQt5.QtCore import Qt, QPoint, QRect
 import torch
 from ..dataset import IM2LatexDataset
 
-
 class SnippingWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -22,7 +21,7 @@ class SnippingWidget(QWidget):
         self.begin = QPoint()
         self.end = QPoint()
         self.is_snipping = False
-        self.dataset = IM2LatexDataset(split='train') # Added this line
+        self.dataset = IM2LatexDataset(split='train')
 
     def paintEvent(self, event):
         if self.is_snipping:
@@ -66,13 +65,14 @@ class SnippingWidget(QWidget):
         print("Screenshot saved as 'screenshot.png'")
 
         # Perform OCR on the captured image
-        model = load_model()
+        model, tokenizer = load_model()
         model.eval()
 
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
         transform = transforms.Compose([
-            transforms.Resize((224, 224)),
+            transforms.Resize((256, 256)),
+            transforms.Grayscale(num_output_channels=1),
             transforms.ToTensor(),
         ])
 
@@ -82,11 +82,7 @@ class SnippingWidget(QWidget):
         with torch.no_grad():
             output = model(image)
 
-        # result = train_dataset.decode_formula(output[0])
-        # print("Recognized formula:", result)
-
         #Added following lines
         predicted_indices = torch.argmax(output, dim=-1)
-        result = self.dataset.decode_formula(predicted_indices)
+        result = tokenizer.decode(predicted_indices.squeeze().tolist(), skip_special_tokens=True)
         print("Recognized formula:", result)
-        #End of added lines
