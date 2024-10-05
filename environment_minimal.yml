@@ -1,0 +1,6 @@
+name: ipac
+channels:
+  - defaults
+dependencies:
+  - python=3.12
+prefix: /home/onkaps/anaconda3/envs/ipac

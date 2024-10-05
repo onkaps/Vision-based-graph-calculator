@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import QWidget, QApplication
 from PyQt5.QtGui import QPainter, QColor, QPen
 from PyQt5.QtCore import Qt, QPoint, QRect
 import torch
+from ..dataset import IM2LatexDataset
 
 
 class SnippingWidget(QWidget):
@@ -21,6 +22,7 @@ class SnippingWidget(QWidget):
         self.begin = QPoint()
         self.end = QPoint()
         self.is_snipping = False
+        self.dataset = IM2LatexDataset(split='train') # Added this line
 
     def paintEvent(self, event):
         if self.is_snipping:
@@ -80,5 +82,11 @@ class SnippingWidget(QWidget):
         with torch.no_grad():
             output = model(image)
 
-        result = train_dataset.decode_formula(output[0])
+        # result = train_dataset.decode_formula(output[0])
+        # print("Recognized formula:", result)
+
+        #Added following lines
+        predicted_indices = torch.argmax(output, dim=-1)
+        result = self.dataset.decode_formula(predicted_indices)
         print("Recognized formula:", result)
+        #End of added lines

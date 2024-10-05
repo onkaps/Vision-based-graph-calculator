@@ -50,7 +50,88 @@ class IM2LatexDataset(Dataset):
 
         return image, torch.tensor(encoded_formula)
 
+    # def decode_formula(self, encoded_formula):
+    #     return ''.join(
+    #         [self.idx_to_char[idx.item()] for idx in encoded_formula]
+    #     )
+
+    #My changes
     def decode_formula(self, encoded_formula):
-        return ''.join(
-            [self.idx_to_char[idx.item()] for idx in encoded_formula]
-        )
+        """
+        Decode either model outputs (logits) or encoded indices back into a formula string.
+        
+        Args:
+            encoded_formula: Can be either:
+                - A tensor of indices directly (1D tensor)
+                - A tensor of logits (2D tensor: sequence_length x vocab_size)
+        
+        Returns:
+            str: The decoded formula as a string
+        """
+        try:
+            # Check if input is logits (2D tensor) or indices (1D tensor)
+            if encoded_formula.dim() == 2:
+                # If logits, convert to indices first
+                indices = torch.argmax(encoded_formula, dim=-1)
+            else:
+                indices = encoded_formula
+
+            # Convert indices to characters
+            decoded_chars = []
+            for idx in indices:
+                try:
+                    # Convert tensor to integer and look up in vocabulary
+                    idx_val = idx.item() if torch.is_tensor(idx) else idx
+                    if idx_val in self.idx_to_char:
+                        char = self.idx_to_char[idx_val]
+                        # Optional: Skip special tokens if you have them
+                        if char not in ['<pad>', '<sos>', '<eos>']:
+                            decoded_chars.append(char)
+                except (KeyError, ValueError) as e:
+                    print(f"Warning: Could not decode index {idx_val}: {str(e)}")
+                    continue
+
+            # Join all characters into final formula
+            formula = ''.join(decoded_chars)
+            
+            # Optional: Clean up any remaining special characters or whitespace
+            formula = formula.strip()
+            
+            return formula
+
+        except Exception as e:
+            print(f"Error decoding formula: {str(e)}")
+            return ""
+
+# Example usage in your dataset class:
+def __getitem__(self, idx):
+    # Your existing __getitem__ code here
+    formula = self.dataset[idx]['formula'].strip()
+    image = self.dataset[idx]['image'].convert('L')
+
+    if self.transform:
+        image = self.transform(image)
+
+    # Encode formula
+    try:
+        encoded_formula = torch.tensor([
+            self.char_to_idx[char] 
+            for char in formula 
+            if char in self.char_to_idx
+        ])
+    except KeyError as e:
+        print(f"Warning: Character not in vocabulary: {str(e)}")
+        encoded_formula = torch.tensor([])
+
+    return image, encoded_formula
+    #end of my changes 
+    
+    def save_vocab(self, vocab_path='vocab.json'):
+        # Save the vocabulary as a JSON file
+        vocab_dict = {
+            'char_to_idx': self.char_to_idx,
+            'idx_to_char': self.idx_to_char
+        }
+        with open(vocab_path, 'w') as f:
+            json.dump(vocab_dict, f, ensure_ascii=False, indent=4)
+        print(f"Vocabulary saved to {vocab_path}")

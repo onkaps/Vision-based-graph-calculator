@@ -26,7 +26,7 @@ class MainWindow(QMainWindow):
 if __name__ == '__main__':
     args = sys.argv[1:]
     if args == []:
-        app = QApplication(sys.argv)
+        app = QApplication(sys.argv) 
         mainWindow = MainWindow()
         mainWindow.show()
         sys.exit(app.exec_())
