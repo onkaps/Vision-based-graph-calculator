@@ -32,14 +32,11 @@ class IM2LatexModel(nn.Module):
     def forward(self, image, formula=None, teacher_forcing_ratio=0.5):
         # Extract features from image
         features = self.cnn(image)
-        features = features.view(features.size(
-            0), -1, 256)  # Reshape for LSTM input
+        features = features.view(features.size(0), -1, 256)  # Reshape for LSTM input
 
         # Initialize hidden state with image features
-        h0 = torch.zeros(self.lstm.num_layers, features.size(
-            0), self.lstm.hidden_size).to(image.device)
-        c0 = torch.zeros(self.lstm.num_layers, features.size(
-            0), self.lstm.hidden_size).to(image.device)
+        h0 = torch.zeros(self.lstm.num_layers, features.size(0), self.lstm.hidden_size).to(image.device)
+        c0 = torch.zeros(self.lstm.num_layers, features.size(0), self.lstm.hidden_size).to(image.device)
 
         # If we're training, use teacher forcing
         if self.training and formula is not None:
@@ -49,15 +46,14 @@ class IM2LatexModel(nn.Module):
         else:
             # For inference or if no formula is provided
             output = []
-            current_symbol = torch.zeros(image.size(0), 1).long().to(
-                image.device)  # Start symbol
+            current_symbol = torch.zeros(image.size(0), 1).long().to(image.device)  # Start symbol
             for _ in range(100):  # Maximum formula length
                 embedded = self.embed(current_symbol)
                 lstm_out, (h0, c0) = self.lstm(embedded, (h0, c0))
                 symbol_prob = self.fc(lstm_out)
                 current_symbol = symbol_prob.argmax(2)
                 output.append(current_symbol)
-                if (current_symbol == self.end_symbol).any():
+                if (current_symbol == self.end_symbol).all():
                     break
             output = torch.cat(output, dim=1)
 
